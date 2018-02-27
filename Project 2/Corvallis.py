@@ -1,6 +1,6 @@
 """
 
-Santosh Kumar,Daniel Mageed
+Santosh Kumar,Daniel Magee
 
 
 """
