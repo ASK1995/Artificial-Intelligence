@@ -1,0 +1,99 @@
+
+\section{Algorithm}
+
+Our sudoku solver consists of a backtracking search algorithm~\ref{alg:backtrack} containing contraint propagation, inference rules, and a next cell choice heuristic. 
+The backtrack function takes a list of variables, in this case the state of the sudoku grid, a heuristic function, and an inference level as inputs.
+The state of the sudoku grid is represented as a hash table with the coordinates of the cell in a string as keys, e.g. `1a` for the top left corner, and the remaining candidate domain values in a string as values.
+A cell is `assigned` when there is only one value in it's domain. 
+
+\begin{algorithm}[H]
+    \caption{Backtracking Search}
+    \label{alg:backtrack}   
+    \begin{algorithmic}
+        \STATE function BACKTRACK(variables, HEURISTIC, inferenceLevel):
+        \IF{variables is a solution}
+            \RETURN variables
+        \ENDIF
+        \STATE cell = HEURISTIC(variables)
+        \FOR{value in domain of cell if value is consistent}
+            \STATE copy variables to variablesCopy
+            \STATE set cell to value in variablesCopy
+            \STATE variablesCopy = CONSTRAINT-PROPAGATION(variablesCopy, inferenceLevel)
+            \IF{variablesCopy is not failure}
+                \STATE result = BACKTRACK(variablesCopy, HEURISTIC, inferenceLevel)
+                \IF{result is not failure}
+                    \RETURN result
+                \ENDIF
+            \ENDIF
+        \ENDFOR
+        \STATE increment backtrack count
+        \RETURN Failure
+    \end{algorithmic}
+\end{algorithm}
+
+Backtracking search is a variant of the depth-first search algorithm.
+It explores the solution tree like a depth-first search algorithm, but keeps a record of the search path in order to restart the search from the parent node if the branch ends in failure.
+It begins by checking whether the variables are a solution to the puzzle.
+Then it elects a cell using the provided heuristic to assign a consistent value.
+It makes a copy of the variable table and updates that copy with the constraint propagation procedure described in Algorithm~\ref{alg:cProp}.
+When the contraint propagation and inference rules are unable to advance the solution further, the reduced variable table or a failure message is returned.
+Failure messages occur whenever a variable has an empty domain.
+If the contraint propagation finds a contradiction and returns failure, we try assigning a different consistent value to the last variable to be heuristically selected.
+If no values remain in the domain of that variable, we complete a backtrack, increment the counter and return faiulre, meaning that variable cannot produce a solution by assigning a value.
+If the contraint propagation is successful and returns an updated sudoku grid with smaller consistent domains for the variables, then BACKTRACK is called with the updated variables. 
+It selects a new cell to assign a consistent value and propagates the contraints.
+
+\begin{algorithm}[H]
+    \caption{Constraint Propagation}
+    \label{alg:cProp}   
+    \begin{algorithmic}
+        \STATE function CONSTRAINT-PROPAGATION(variables, inferenceLevel):
+        \WHILE{the domain of any variable was changed}
+            \IF{any variable's domain is empty}
+                \RETURN failure
+            \ENDIF
+            \FOR{cell in variables}
+                \IF{size of cell.domain is 1}
+                    \FOR{each neighbor of this cell}
+                        \STATE remove cell.value from neighbor.domain
+                        \IF{size of neighbor.domain is 1}
+                            \STATE increment inference rule 1 count
+                        \ENDIF
+                    \ENDFOR
+                \ENDIF
+            \ENDFOR
+            \FOR{$i=1$ \TO inferenceLevel}
+                \STATE apply inference rules i
+            \ENDFOR
+        \ENDWHILE
+        \RETURN variables
+    \end{algorithmic}
+\end{algorithm}
+
+The constraint propagation function shown in Algorithm~\ref{alg:cProp} continues as long as the procedure has made some change in the consistent domain of any variable.
+The \textit{inferenceLevel} parameter determines how deep the algorithm should search for values to eliminate; we consider three inference levels, single, double, triple, which contain two rules each, naked and hidden.
+The constraints are propagated by traversing all the cells in the grid, if they are assigned a variable (if there is only one value in their domain), we visit all the cells that are constrained to contain a different variable and remove the value from their domain if it is there.
+
+Since our method of assigning values to variables is simply leaving a single value in the domain of a cell, there is no way to avoid using the first inference rule, naked singles.  
+The naked singles rule assigns a value to a variable if it is the only candidate left in the domain.
+Propagating the constraints entails checking whether any cell has only one value available to it; checking the length of the domain is effectively the same as assigning the value to the variable if it is the only value left. 
+Since each new assignment detected during constraint propagation, a neighbor`s domain is reduced to a size of 1, counts as a naked single inference assignment, we cannot differentiate these two actions and cannot launch the program without any inference abilities at all as requested in the problem statement.
+
+There are two varieties of inference rules, naked and hidden. 
+Naked rules apply to $k$ cells with identical sets of $k$ candidates in the same constraint group (box, column, or row).
+Finding a naked set allows the values in that set to be removed from all other cells in the constraint group.
+Hidden rules involve $k$ cells with identical $k$ length subsets within the domains of those cells.
+Finding a hidden set allows the all the values outside the set in the cells with the hidden subset to be removed. 
+We investigate applying these rules up to $k=3$. 
+In our results section, we will show the performance of the constraint propagation step when toggling a subset of these rules on or off.
+
+In this program, we created two different heuristics to choose a variable to assign a single value in the BACKTRACKING function.
+\begin{enumerate}
+\item \textbf{Fixed selector} - Pick the first square with more than one value in its domain, traversing the grid from top to bottom, left to right.
+\item \textbf{Most Constrained Variable} - Pick the variable with fewest, but more than one, value in its domain.
+\end{enumerate}
+While we would expect the most constrained variable heuristic to provide a more efficient path to the solution, it also involves a more expensive operation, traversing and storing the length of the domain for each variable in the grid.
+This could diminish performance benefits gained from taking a more direct route.
+
+
+
