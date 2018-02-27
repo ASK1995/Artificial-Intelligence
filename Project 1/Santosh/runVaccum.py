@@ -1,5 +1,5 @@
 '''
-Santosh Kumar Aenugu, Daniel Mageed
+Santosh Kumar Aenugu, Daniel Magee
 '''
 
 import os 
